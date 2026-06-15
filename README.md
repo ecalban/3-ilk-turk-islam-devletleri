@@ -1,6 +1,8 @@
-# İlk Türk-İslam Devletleri Testi
+# İlk Türk-İslam Devletleri · Eşini Bul
 
-RTF notlarındaki 110 bilgiyi dört seçenekli çalışma kartlarına dönüştüren, bağımlılıksız statik web uygulaması.
+RTF notlarındaki 110 bilgiyi tanım ve cevap kartlarıyla çalıştıran, bağımlılıksız statik eşleştirme oyunu.
+
+Her tanım için 10 benzersiz cevap kartı hazırlanır. Oyuncu kartlar arasında dolaşır ve eşleştiğini düşündüğü ikiliyi bir araya getirir.
 
 Telefon, tablet ve masaüstü ekranlarına uyumlu responsive tasarıma sahiptir.
 

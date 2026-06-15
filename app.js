@@ -130,7 +130,7 @@ function getTopicForId(id) {
   return TOPICS.find((topic) => topic.id !== "all" && id >= topic.from && id <= topic.to);
 }
 
-const QUESTIONS = RAW_NOTES.trim().split("\n").map((line, index) => {
+const STUDY_ITEMS = RAW_NOTES.trim().split("\n").map((line, index) => {
   const separatorIndex = line.indexOf(":");
   const id = index + 1;
   const prompt = line.slice(0, separatorIndex).trim();
@@ -147,36 +147,33 @@ const QUESTIONS = RAW_NOTES.trim().split("\n").map((line, index) => {
 const state = {
   session: [],
   index: 0,
-  correct: 0,
-  answered: 0,
-  answeredCurrent: false,
-  mistakes: [],
+  answerDeck: [],
+  answerIndex: 0,
+  matched: false,
   selectedTopic: TOPICS[0],
 };
 
 const els = {
   setupPanel: document.querySelector("#setupPanel"),
-  quizPanel: document.querySelector("#quizPanel"),
-  resultPanel: document.querySelector("#resultPanel"),
+  gamePanel: document.querySelector("#gamePanel"),
+  finishPanel: document.querySelector("#finishPanel"),
   topicSelect: document.querySelector("#topicSelect"),
-  questionCountSelect: document.querySelector("#questionCountSelect"),
+  cardCountSelect: document.querySelector("#cardCountSelect"),
   startButton: document.querySelector("#startButton"),
   restartButton: document.querySelector("#restartButton"),
-  correctCount: document.querySelector("#correctCount"),
-  answeredCount: document.querySelector("#answeredCount"),
   topicBadge: document.querySelector("#topicBadge"),
-  questionCounter: document.querySelector("#questionCounter"),
-  progressBar: document.querySelector("#progressBar"),
-  questionText: document.querySelector("#questionText"),
-  answerGrid: document.querySelector("#answerGrid"),
+  roundCounter: document.querySelector("#roundCounter"),
+  definitionText: document.querySelector("#definitionText"),
+  answerCard: document.querySelector("#answerCard"),
+  answerCardCounter: document.querySelector("#answerCardCounter"),
+  answerText: document.querySelector("#answerText"),
+  showAnotherButton: document.querySelector("#showAnotherButton"),
+  matchButton: document.querySelector("#matchButton"),
   feedbackPanel: document.querySelector("#feedbackPanel"),
   feedbackTitle: document.querySelector("#feedbackTitle"),
   feedbackText: document.querySelector("#feedbackText"),
   nextButton: document.querySelector("#nextButton"),
-  resultTitle: document.querySelector("#resultTitle"),
-  resultText: document.querySelector("#resultText"),
-  retryMistakesButton: document.querySelector("#retryMistakesButton"),
-  newSessionButton: document.querySelector("#newSessionButton"),
+  newGameButton: document.querySelector("#newGameButton"),
 };
 
 function shuffle(items) {
@@ -190,217 +187,188 @@ function shuffle(items) {
 
 function renderTopicOptions() {
   els.topicSelect.innerHTML = TOPICS.map((topic) => {
-    const count = QUESTIONS.filter((question) => (
-      topic.id === "all" || question.topic === topic.id
+    const count = STUDY_ITEMS.filter((item) => (
+      topic.id === "all" || item.topic === topic.id
     )).length;
     return `<option value="${topic.id}">${topic.name} (${count})</option>`;
   }).join("");
 }
 
-function getQuestionPool(topicId) {
+function getDefinitionPool(topicId) {
   return topicId === "all"
-    ? QUESTIONS
-    : QUESTIONS.filter((question) => question.topic === topicId);
+    ? STUDY_ITEMS
+    : STUDY_ITEMS.filter((item) => item.topic === topicId);
 }
 
-function startSession(customQuestions = null) {
+function startGame() {
   state.selectedTopic = TOPICS.find((topic) => topic.id === els.topicSelect.value) ?? TOPICS[0];
-
-  if (customQuestions) {
-    state.session = shuffle(customQuestions);
-    state.selectedTopic = { id: "mistakes", name: "Yanlış cevaplar" };
-  } else {
-    const pool = shuffle(getQuestionPool(state.selectedTopic.id));
-    const requestedCount = els.questionCountSelect.value === "all"
-      ? pool.length
-      : Number(els.questionCountSelect.value);
-    state.session = pool.slice(0, Math.min(requestedCount, pool.length));
-  }
+  const pool = shuffle(getDefinitionPool(state.selectedTopic.id));
+  const requestedCount = els.cardCountSelect.value === "all"
+    ? pool.length
+    : Number(els.cardCountSelect.value);
+  state.session = pool.slice(0, Math.min(requestedCount, pool.length));
 
   state.index = 0;
-  state.correct = 0;
-  state.answered = 0;
-  state.answeredCurrent = false;
-  state.mistakes = [];
 
   els.setupPanel.hidden = true;
-  els.resultPanel.hidden = true;
-  els.quizPanel.hidden = false;
-  updateScore();
-  renderQuestion();
+  els.finishPanel.hidden = true;
+  els.gamePanel.hidden = false;
+  renderRound();
 }
 
-function buildChoices(question) {
-  const blockedAnswers = new Set(
-    QUESTIONS
-      .filter((item) => item.prompt === question.prompt)
-      .map((item) => normalizeAnswer(item.answer))
-  );
+function buildAnswerDeck(item) {
+  const seen = new Set([normalizeAnswer(item.answer)]);
 
-  const sameTopic = QUESTIONS.filter((item) => (
-    item.id !== question.id
-    && item.topic === question.topic
-    && !blockedAnswers.has(normalizeAnswer(item.answer))
+  const sameTopic = STUDY_ITEMS.filter((candidate) => (
+    candidate.id !== item.id
+    && candidate.topic === item.topic
+    && !seen.has(normalizeAnswer(candidate.answer))
   ));
-  const otherTopics = QUESTIONS.filter((item) => (
-    item.id !== question.id
-    && item.topic !== question.topic
-    && !blockedAnswers.has(normalizeAnswer(item.answer))
+  const otherTopics = STUDY_ITEMS.filter((candidate) => (
+    candidate.id !== item.id
+    && candidate.topic !== item.topic
+    && !seen.has(normalizeAnswer(candidate.answer))
   ));
 
-  const uniqueCandidates = [];
-  const seen = new Set(blockedAnswers);
-  shuffle(sameTopic).concat(shuffle(otherTopics)).forEach((item) => {
-    const normalized = normalizeAnswer(item.answer);
+  const distractors = [];
+  shuffle(sameTopic).concat(shuffle(otherTopics)).forEach((candidate) => {
+    const normalized = normalizeAnswer(candidate.answer);
     if (!seen.has(normalized)) {
       seen.add(normalized);
-      uniqueCandidates.push(item.answer);
+      distractors.push(candidate.answer);
     }
   });
 
-  return shuffle([question.answer, ...uniqueCandidates.slice(0, 3)]);
+  return shuffle([item.answer, ...distractors.slice(0, 9)]);
 }
 
-function formatPrompt(prompt) {
-  return /[?.!]$/.test(prompt) ? prompt : `${prompt}?`;
-}
-
-function renderQuestion() {
-  const question = state.session[state.index];
-  const choices = buildChoices(question);
-  state.answeredCurrent = false;
+function renderRound() {
+  const item = state.session[state.index];
+  state.answerDeck = buildAnswerDeck(item);
+  state.answerIndex = 0;
+  state.matched = false;
 
   els.topicBadge.textContent = state.selectedTopic.name;
-  els.questionCounter.textContent = `Soru ${state.index + 1} / ${state.session.length}`;
-  els.progressBar.style.width = `${(state.index / state.session.length) * 100}%`;
-  els.questionText.textContent = formatPrompt(question.prompt);
+  els.roundCounter.textContent = `Tanım ${state.index + 1} / ${state.session.length}`;
+  els.definitionText.textContent = item.prompt;
   els.feedbackPanel.hidden = true;
-  els.feedbackPanel.classList.remove("is-wrong");
-  els.nextButton.textContent = state.index === state.session.length - 1 ? "Sonucu gör" : "Sonraki soru";
-
-  els.answerGrid.innerHTML = "";
-  choices.forEach((answer, index) => {
-    const button = document.createElement("button");
-    button.className = "answer-button";
-    button.type = "button";
-    button.dataset.answer = answer;
-    button.innerHTML = `
-      <span class="answer-key">${index + 1}</span>
-      <span>${answer}</span>
-    `;
-    button.addEventListener("click", () => selectAnswer(button, question));
-    els.answerGrid.append(button);
-  });
-
-  els.answerGrid.querySelector(".answer-button")?.focus({ preventScroll: true });
+  els.feedbackPanel.classList.remove("is-match");
+  els.nextButton.hidden = true;
+  els.nextButton.textContent = state.index === state.session.length - 1
+    ? "Desteyi tamamla"
+    : "Sonraki tanım";
+  els.showAnotherButton.disabled = false;
+  els.matchButton.disabled = false;
+  els.answerCard.classList.remove("is-match", "is-miss", "is-changing");
+  renderAnswerCard();
 }
 
-function selectAnswer(selectedButton, question) {
-  if (state.answeredCurrent) {
+function renderAnswerCard() {
+  els.answerText.textContent = state.answerDeck[state.answerIndex];
+  els.answerCardCounter.textContent = `${state.answerIndex + 1} / ${state.answerDeck.length}`;
+}
+
+function showAnotherCard() {
+  if (state.matched) {
     return;
   }
 
-  state.answeredCurrent = true;
-  state.answered += 1;
-  const isCorrect = normalizeAnswer(selectedButton.dataset.answer) === normalizeAnswer(question.answer);
+  state.answerIndex = (state.answerIndex + 1) % state.answerDeck.length;
+  els.feedbackPanel.hidden = true;
+  els.answerCard.classList.remove("is-miss");
+  els.answerCard.classList.add("is-changing");
+  window.setTimeout(() => {
+    renderAnswerCard();
+    els.answerCard.classList.remove("is-changing");
+  }, 130);
+}
 
-  els.answerGrid.querySelectorAll(".answer-button").forEach((button) => {
-    button.disabled = true;
-    if (normalizeAnswer(button.dataset.answer) === normalizeAnswer(question.answer)) {
-      button.classList.add("correct");
-    }
-  });
+function matchCurrentPair() {
+  if (state.matched) {
+    return;
+  }
 
-  if (isCorrect) {
-    state.correct += 1;
-    els.feedbackTitle.textContent = "Doğru bildin";
-    els.feedbackText.textContent = question.answer;
+  const item = state.session[state.index];
+  const displayedAnswer = state.answerDeck[state.answerIndex];
+  const isMatch = normalizeAnswer(displayedAnswer) === normalizeAnswer(item.answer);
+
+  if (isMatch) {
+    state.matched = true;
+    els.answerCard.classList.remove("is-miss");
+    els.answerCard.classList.add("is-match");
+    els.feedbackPanel.classList.add("is-match");
+    els.feedbackTitle.textContent = "Eşini buldun";
+    els.feedbackText.textContent = "Tanım ve cevap kartı artık bir çift.";
+    els.showAnotherButton.disabled = true;
+    els.matchButton.disabled = true;
+    els.nextButton.hidden = false;
+    els.nextButton.focus({ preventScroll: true });
   } else {
-    selectedButton.classList.add("wrong");
-    state.mistakes.push(question);
-    els.feedbackPanel.classList.add("is-wrong");
-    els.feedbackTitle.textContent = "Yanlış cevap";
-    els.feedbackText.textContent = `Doğru cevap: ${question.answer}`;
+    els.answerCard.classList.remove("is-miss");
+    void els.answerCard.offsetWidth;
+    els.answerCard.classList.add("is-miss");
+    els.feedbackPanel.classList.remove("is-match");
+    els.feedbackTitle.textContent = "Bu kartlar eşleşmiyor";
+    els.feedbackText.textContent = "Başka bir cevap kartı gösterip yeniden dene.";
   }
 
   els.feedbackPanel.hidden = false;
-  updateScore();
-  els.nextButton.focus({ preventScroll: true });
-}
-
-function updateScore() {
-  els.correctCount.textContent = String(state.correct);
-  els.answeredCount.textContent = String(state.answered);
 }
 
 function goNext() {
-  if (!state.answeredCurrent) {
+  if (!state.matched) {
     return;
   }
 
   if (state.index >= state.session.length - 1) {
-    showResults();
+    showFinish();
     return;
   }
 
   state.index += 1;
-  renderQuestion();
+  renderRound();
 }
 
-function showResults() {
-  const total = state.session.length;
-  const percentage = Math.round((state.correct / total) * 100);
-
-  els.quizPanel.hidden = true;
-  els.resultPanel.hidden = false;
-  els.resultTitle.textContent = `${state.correct} / ${total} doğru · %${percentage}`;
-
-  if (percentage === 100) {
-    els.resultText.textContent = "Kusursuz bir oturum. Bu bölümdeki tüm cevapları doğru bildin.";
-  } else if (percentage >= 75) {
-    els.resultText.textContent = `Gayet iyi gidiyor. ${state.mistakes.length} soruyu tekrar ederek bilgileri sağlamlaştırabilirsin.`;
-  } else {
-    els.resultText.textContent = `${state.mistakes.length} soruyu tekrar etmek bu konudaki boşlukları hızlıca kapatacaktır.`;
-  }
-
-  els.retryMistakesButton.hidden = state.mistakes.length === 0;
-  els.progressBar.style.width = "100%";
+function showFinish() {
+  els.gamePanel.hidden = true;
+  els.finishPanel.hidden = false;
+  els.newGameButton.focus({ preventScroll: true });
 }
 
 function showSetup() {
-  els.quizPanel.hidden = true;
-  els.resultPanel.hidden = true;
+  els.gamePanel.hidden = true;
+  els.finishPanel.hidden = true;
   els.setupPanel.hidden = false;
   els.startButton.focus({ preventScroll: true });
 }
 
-function retryMistakes() {
-  const questions = [...state.mistakes];
-  if (questions.length > 0) {
-    startSession(questions);
-  }
-}
-
 function handleKeyboard(event) {
-  if (!els.quizPanel.hidden && !state.answeredCurrent && ["1", "2", "3", "4"].includes(event.key)) {
-    event.preventDefault();
-    const button = els.answerGrid.querySelectorAll(".answer-button")[Number(event.key) - 1];
-    button?.click();
+  if (els.gamePanel.hidden) {
     return;
   }
 
-  if (!els.quizPanel.hidden && state.answeredCurrent && event.key === "Enter") {
+  if (!state.matched && event.key === "ArrowRight") {
     event.preventDefault();
-    goNext();
+    showAnotherCard();
+    return;
+  }
+
+  if (event.key === "Enter") {
+    event.preventDefault();
+    if (state.matched) {
+      goNext();
+    } else {
+      matchCurrentPair();
+    }
   }
 }
 
-els.startButton.addEventListener("click", () => startSession());
+els.startButton.addEventListener("click", startGame);
 els.restartButton.addEventListener("click", showSetup);
+els.showAnotherButton.addEventListener("click", showAnotherCard);
+els.matchButton.addEventListener("click", matchCurrentPair);
 els.nextButton.addEventListener("click", goNext);
-els.retryMistakesButton.addEventListener("click", retryMistakes);
-els.newSessionButton.addEventListener("click", showSetup);
+els.newGameButton.addEventListener("click", showSetup);
 document.addEventListener("keydown", handleKeyboard);
 
 renderTopicOptions();
-updateScore();

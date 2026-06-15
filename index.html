@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#7a2e35">
+    <meta name="description" content="İlk Türk-İslam devletleri için 110 soruluk etkileşimli KPSS tarih testi.">
+    <title>İlk Türk-İslam Devletleri Testi</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">KPSS Tarih Çalışması</p>
+          <h1>İlk Türk-İslam Devletleri</h1>
+          <p class="subtitle">Notlarını kartlarla çalış, cevabını seç ve sonucunu anında gör.</p>
+        </div>
+        <div class="scoreboard" aria-live="polite">
+          <span class="score-label">Doğru</span>
+          <strong><span id="correctCount">0</span> / <span id="answeredCount">0</span></strong>
+        </div>
+      </header>
+
+      <section id="setupPanel" class="setup-panel" aria-labelledby="setupTitle">
+        <div>
+          <p class="section-kicker">Yeni çalışma</p>
+          <h2 id="setupTitle">Oturumunu hazırla</h2>
+          <p>RTF dosyasındaki 110 bilgi soru-cevap kartlarına dönüştürüldü.</p>
+        </div>
+        <div class="setup-controls">
+          <label>
+            <span>Konu</span>
+            <select id="topicSelect"></select>
+          </label>
+          <label>
+            <span>Soru sayısı</span>
+            <select id="questionCountSelect">
+              <option value="10">10 soru</option>
+              <option value="20" selected>20 soru</option>
+              <option value="50">50 soru</option>
+              <option value="all">Tüm sorular</option>
+            </select>
+          </label>
+          <button id="startButton" class="primary-button" type="button">Teste başla</button>
+        </div>
+      </section>
+
+      <section id="quizPanel" class="quiz-panel" hidden>
+        <div class="progress-row">
+          <div>
+            <span id="topicBadge" class="topic-badge">Tüm konular</span>
+            <span id="questionCounter" class="question-counter">Soru 1 / 20</span>
+          </div>
+          <button id="restartButton" class="ghost-button compact" type="button">Yeni oturum</button>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+
+        <article class="question-card">
+          <p class="card-label">SORU</p>
+          <h2 id="questionText"></h2>
+        </article>
+
+        <div id="answerGrid" class="answer-grid" aria-label="Cevap seçenekleri"></div>
+
+        <div id="feedbackPanel" class="feedback-panel" aria-live="polite" hidden>
+          <div>
+            <strong id="feedbackTitle"></strong>
+            <p id="feedbackText"></p>
+          </div>
+          <button id="nextButton" class="secondary-button" type="button">Sonraki soru</button>
+        </div>
+      </section>
+
+      <section id="resultPanel" class="result-panel" hidden aria-live="polite">
+        <p class="section-kicker">Oturum tamamlandı</p>
+        <h2 id="resultTitle"></h2>
+        <p id="resultText"></p>
+        <div class="result-actions">
+          <button id="retryMistakesButton" class="secondary-button" type="button">Yanlışları tekrar et</button>
+          <button id="newSessionButton" class="primary-button" type="button">Yeni oturum</button>
+        </div>
+      </section>
+
+      <footer>
+        <span class="desktop-hint">İpucu: Cevapları seçmek için klavyeden <kbd>1</kbd>–<kbd>4</kbd>, ilerlemek için <kbd>Enter</kbd> kullanabilirsin.</span>
+        <span class="mobile-hint">Bir cevaba dokun, ardından sonraki soruya geç.</span>
+      </footer>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

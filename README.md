@@ -2,7 +2,9 @@
 
 RTF notlarındaki 110 bilgiyi tanım ve cevap kartlarıyla çalıştıran, bağımlılıksız statik eşleştirme oyunu.
 
-Her tanım için 10 benzersiz cevap kartı hazırlanır. Oyuncu kartlar arasında dolaşır ve eşleştiğini düşündüğü ikiliyi bir araya getirir.
+Her tanım için 10 benzersiz cevap kartı aynı anda gösterilir. Oyuncu istediği cevap kartını seçer ve eşleştiğini düşündüğü ikiliyi bir araya getirir.
+
+Doğru eşleştirilen tanım kartı aynı oyunda tekrar gösterilmez.
 
 Telefon, tablet ve masaüstü ekranlarına uyumlu responsive tasarıma sahiptir.
 

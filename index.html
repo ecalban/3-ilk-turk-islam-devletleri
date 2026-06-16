@@ -6,10 +6,22 @@
     <meta name="theme-color" content="#183f4b">
     <meta name="description" content="İlk Türk-İslam devletleri bilgilerini kartlarla eşleştiren etkileşimli çalışma oyunu.">
     <title>İlk Türk-İslam Devletleri · Eşini Bul</title>
-    <link rel="stylesheet" href="styles.css?v=20260616-board">
+    <link rel="stylesheet" href="styles.css?v=20260616-compact">
   </head>
   <body>
     <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">İlk Türk-İslam Devletleri Kartları</p>
+          <h1>Eşini Bul</h1>
+          <p class="subtitle">Tanım kartını ona ait cevap kartıyla buluştur.</p>
+        </div>
+        <div class="deck-mark" aria-label="Kart destesi">
+          <span>110</span>
+          <small>kartlık deste</small>
+        </div>
+      </header>
+
       <section id="gamePanel" class="game-board" aria-labelledby="definitionText">
         <div class="game-toolbar">
           <label for="topicSelect">
@@ -55,6 +67,6 @@
       <footer>Her tanımda 10 cevap kartı görünür; doğru bilinen tanım aynı oyunda tekrar gelmez.</footer>
     </main>
 
-    <script src="app.js?v=20260616-board"></script>
+    <script src="app.js?v=20260616-compact"></script>
   </body>
 </html>

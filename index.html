@@ -3,66 +3,31 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#7a2e35">
+    <meta name="theme-color" content="#183f4b">
     <meta name="description" content="İlk Türk-İslam devletleri bilgilerini kartlarla eşleştiren etkileşimli çalışma oyunu.">
     <title>İlk Türk-İslam Devletleri · Eşini Bul</title>
-    <link rel="stylesheet" href="styles.css?v=20260616-grid">
+    <link rel="stylesheet" href="styles.css?v=20260616-board">
   </head>
   <body>
     <main class="app-shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">KPSS Tarih Kartları</p>
-          <h1>Eşini Bul</h1>
-          <p class="subtitle">Tanım kartını oku, 10 cevap kartı arasından eşini seç ve ikisini buluştur.</p>
-        </div>
-        <div class="deck-mark" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <strong>10</strong>
-        </div>
-      </header>
-
-      <section id="setupPanel" class="setup-panel" aria-labelledby="setupTitle">
-        <div>
-          <p class="section-kicker">Yeni oyun</p>
-          <h2 id="setupTitle">Kartlarını hazırla</h2>
-          <p>Her tanım için biri eşleşen 10 farklı cevap kartı hazırlanır.</p>
-        </div>
-        <div class="setup-controls">
-          <label>
-            <span>Konu</span>
+      <section id="gamePanel" class="game-board" aria-labelledby="definitionText">
+        <div class="game-toolbar">
+          <label for="topicSelect">
+            <span>Kart destesi</span>
             <select id="topicSelect"></select>
           </label>
-          <label>
-            <span>Tanım sayısı</span>
-            <select id="cardCountSelect">
-              <option value="10">10 tanım</option>
-              <option value="20" selected>20 tanım</option>
-              <option value="50">50 tanım</option>
-              <option value="all">Tüm tanımlar</option>
-            </select>
-          </label>
-          <button id="startButton" class="primary-button" type="button">Oyuna başla</button>
-        </div>
-      </section>
-
-      <section id="gamePanel" class="game-panel" hidden>
-        <div class="game-toolbar">
-          <div>
-            <span id="topicBadge" class="topic-badge">Tüm konular</span>
-            <span id="roundCounter" class="round-counter">Tanım 1 / 20</span>
-          </div>
-          <button id="restartButton" class="ghost-button compact" type="button">Yeni oyun</button>
+          <p id="deckInfo" class="deck-info"></p>
         </div>
 
-        <div class="card-table">
-          <article class="study-card definition-card">
+        <div class="pair-area">
+          <article id="definitionCard" class="definition-card">
             <p class="card-label">TANIM KARTI</p>
             <h2 id="definitionText"></h2>
           </article>
 
-          <div class="match-symbol" aria-hidden="true">+</div>
+          <div class="pair-connector" aria-hidden="true">
+            <span></span>
+          </div>
 
           <section class="answers-section" aria-labelledby="answersTitle">
             <div class="answers-heading">
@@ -82,23 +47,14 @@
         </div>
 
         <div id="feedbackPanel" class="feedback-panel" aria-live="polite" hidden>
-          <div>
-            <strong id="feedbackTitle"></strong>
-            <p id="feedbackText"></p>
-          </div>
+          <strong id="feedbackTitle"></strong>
+          <p id="feedbackText"></p>
         </div>
-      </section>
-
-      <section id="finishPanel" class="finish-panel" hidden aria-live="polite">
-        <p class="section-kicker">Deste tamamlandı</p>
-        <h2>Tüm tanımlar eşini buldu</h2>
-        <p>Yeni bir konu veya farklı sayıda tanımla yeniden oynayabilirsin.</p>
-        <button id="newGameButton" class="primary-button" type="button">Yeni oyun</button>
       </section>
 
       <footer>Her tanımda 10 cevap kartı görünür; doğru bilinen tanım aynı oyunda tekrar gelmez.</footer>
     </main>
 
-    <script src="app.js?v=20260616-grid"></script>
+    <script src="app.js?v=20260616-board"></script>
   </body>
 </html>

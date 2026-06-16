@@ -145,7 +145,6 @@ const STUDY_ITEMS = RAW_NOTES.trim().split("\n").map((line, index) => {
 });
 
 const state = {
-  session: [],
   currentItem: null,
   answerDeck: [],
   selectedAnswer: null,
@@ -156,15 +155,10 @@ const state = {
 };
 
 const els = {
-  setupPanel: document.querySelector("#setupPanel"),
   gamePanel: document.querySelector("#gamePanel"),
-  finishPanel: document.querySelector("#finishPanel"),
   topicSelect: document.querySelector("#topicSelect"),
-  cardCountSelect: document.querySelector("#cardCountSelect"),
-  startButton: document.querySelector("#startButton"),
-  restartButton: document.querySelector("#restartButton"),
-  topicBadge: document.querySelector("#topicBadge"),
-  roundCounter: document.querySelector("#roundCounter"),
+  deckInfo: document.querySelector("#deckInfo"),
+  definitionCard: document.querySelector("#definitionCard"),
   definitionText: document.querySelector("#definitionText"),
   answerGrid: document.querySelector("#answerGrid"),
   showAnotherButton: document.querySelector("#showAnotherButton"),
@@ -172,7 +166,6 @@ const els = {
   feedbackPanel: document.querySelector("#feedbackPanel"),
   feedbackTitle: document.querySelector("#feedbackTitle"),
   feedbackText: document.querySelector("#feedbackText"),
-  newGameButton: document.querySelector("#newGameButton"),
 };
 
 function shuffle(items) {
@@ -189,7 +182,7 @@ function renderTopicOptions() {
     const count = STUDY_ITEMS.filter((item) => (
       topic.id === "all" || item.topic === topic.id
     )).length;
-    return `<option value="${topic.id}">${topic.name} (${count})</option>`;
+    return `<option value="${topic.id}">${topic.name} · ${count} kart</option>`;
   }).join("");
 }
 
@@ -199,23 +192,23 @@ function getDefinitionPool(topicId) {
     : STUDY_ITEMS.filter((item) => item.topic === topicId);
 }
 
-function startGame() {
+function chooseDeck() {
   state.selectedTopic = TOPICS.find((topic) => topic.id === els.topicSelect.value) ?? TOPICS[0];
-  const pool = shuffle(getDefinitionPool(state.selectedTopic.id));
-  const requestedCount = els.cardCountSelect.value === "all"
-    ? pool.length
-    : Number(els.cardCountSelect.value);
-  state.session = pool.slice(0, Math.min(requestedCount, pool.length));
-
   state.currentItem = null;
   state.selectedAnswer = null;
   state.matched = false;
   state.deckCompleted = false;
-  state.completedCardIds = new Set();
+  resetSelectedDeck();
+}
 
-  els.setupPanel.hidden = true;
-  els.finishPanel.hidden = true;
-  els.gamePanel.hidden = false;
+function resetSelectedDeck() {
+  state.selectedTopic = TOPICS.find((topic) => topic.id === els.topicSelect.value) ?? TOPICS[0];
+  const selectedCardIds = new Set(getDefinitionPool(state.selectedTopic.id).map((item) => item.id));
+  selectedCardIds.forEach((id) => state.completedCardIds.delete(id));
+  state.currentItem = null;
+  state.selectedAnswer = null;
+  state.matched = false;
+  state.deckCompleted = false;
   showNextDefinition();
 }
 
@@ -246,16 +239,15 @@ function buildAnswerDeck(item) {
 }
 
 function getRemainingCards() {
-  return state.session.filter((item) => !state.completedCardIds.has(item.id));
+  return getDefinitionPool(state.selectedTopic.id).filter((item) => !state.completedCardIds.has(item.id));
 }
 
 function updateDeckInfo() {
-  const totalCount = state.session.length;
+  const totalCount = getDefinitionPool(state.selectedTopic.id).length;
   const remainingCount = getRemainingCards().length;
   const completedCount = totalCount - remainingCount;
 
-  els.topicBadge.textContent = state.selectedTopic.name;
-  els.roundCounter.textContent = `${remainingCount} kart kaldı · ${completedCount} eşleşti`;
+  els.deckInfo.textContent = `${remainingCount} kart kaldı · ${completedCount} eşleşti`;
 
   return { completedCount, remainingCount, totalCount };
 }
@@ -263,8 +255,11 @@ function updateDeckInfo() {
 function showNextDefinition() {
   const remainingCards = getRemainingCards();
   if (remainingCards.length === 0) {
+    state.currentItem = null;
+    state.answerDeck = [];
+    state.selectedAnswer = null;
     state.deckCompleted = true;
-    showFinish();
+    renderDeckComplete();
     return;
   }
 
@@ -280,12 +275,27 @@ function showNextDefinition() {
 function renderRound() {
   updateDeckInfo();
   els.definitionText.textContent = state.currentItem.prompt;
+  els.definitionCard.classList.remove("is-complete", "is-match", "is-miss");
   els.feedbackPanel.hidden = true;
-  els.feedbackPanel.classList.remove("is-match");
+  els.feedbackPanel.classList.remove("is-match", "is-miss");
   els.showAnotherButton.textContent = "Başka kart göster";
   els.showAnotherButton.disabled = false;
   els.matchButton.disabled = true;
   renderAnswerCards();
+}
+
+function renderDeckComplete() {
+  const totalCount = getDefinitionPool(state.selectedTopic.id).length;
+  els.deckInfo.textContent = `${totalCount} kartın tamamı eşleşti`;
+  els.definitionText.textContent = "Bu destedeki tüm tanımlar eşini buldu.";
+  els.definitionCard.classList.remove("is-match", "is-miss");
+  els.definitionCard.classList.add("is-complete");
+  els.answerGrid.innerHTML = '<p class="empty-deck">Yeni kart kalmadı. Aynı desteyi baştan karıştırabilirsin.</p>';
+  els.feedbackPanel.hidden = true;
+  els.feedbackPanel.classList.remove("is-match", "is-miss");
+  els.showAnotherButton.textContent = "Desteyi baştan karıştır";
+  els.showAnotherButton.disabled = false;
+  els.matchButton.disabled = true;
 }
 
 function renderAnswerCards() {
@@ -304,7 +314,7 @@ function renderAnswerCards() {
 
 function showAnotherCard() {
   if (state.deckCompleted) {
-    showFinish();
+    resetSelectedDeck();
     return;
   }
 
@@ -324,8 +334,9 @@ function selectAnswerCard(selectedButton) {
   state.selectedAnswer = selectedButton.dataset.answer;
   selectedButton.classList.add("is-selected");
   selectedButton.setAttribute("aria-pressed", "true");
+  els.definitionCard.classList.remove("is-miss");
   els.feedbackPanel.hidden = true;
-  els.feedbackPanel.classList.remove("is-match");
+  els.feedbackPanel.classList.remove("is-match", "is-miss");
   els.matchButton.disabled = false;
 }
 
@@ -342,6 +353,8 @@ function matchCurrentPair() {
     state.completedCardIds.add(item.id);
     const deckStats = updateDeckInfo();
 
+    els.definitionCard.classList.remove("is-miss");
+    els.definitionCard.classList.add("is-match");
     els.answerGrid.querySelectorAll(".answer-option").forEach((button) => {
       button.disabled = true;
       button.classList.remove("is-miss");
@@ -352,6 +365,7 @@ function matchCurrentPair() {
     });
 
     els.feedbackPanel.classList.add("is-match");
+    els.feedbackPanel.classList.remove("is-miss");
     els.feedbackTitle.textContent = "Eşini buldun";
     els.feedbackText.textContent = `${item.answer} bu tanımın eşidir. Bu tanım tekrar gösterilmeyecek.`;
     els.matchButton.disabled = true;
@@ -362,30 +376,19 @@ function matchCurrentPair() {
     els.showAnotherButton.focus({ preventScroll: true });
   } else {
     const selectedButton = els.answerGrid.querySelector(".answer-option.is-selected");
+    els.definitionCard.classList.add("is-miss");
     selectedButton?.classList.remove("is-selected");
     selectedButton?.classList.add("is-miss");
     selectedButton?.setAttribute("aria-pressed", "false");
     state.selectedAnswer = null;
     els.matchButton.disabled = true;
     els.feedbackPanel.classList.remove("is-match");
+    els.feedbackPanel.classList.add("is-miss");
     els.feedbackTitle.textContent = "Bu kartlar eşleşmiyor";
     els.feedbackText.textContent = "10 cevap kartı arasından başka bir kart seçip yeniden dene.";
   }
 
   els.feedbackPanel.hidden = false;
-}
-
-function showFinish() {
-  els.gamePanel.hidden = true;
-  els.finishPanel.hidden = false;
-  els.newGameButton.focus({ preventScroll: true });
-}
-
-function showSetup() {
-  els.gamePanel.hidden = true;
-  els.finishPanel.hidden = true;
-  els.setupPanel.hidden = false;
-  els.startButton.focus({ preventScroll: true });
 }
 
 function handleKeyboard(event) {
@@ -409,11 +412,10 @@ function handleKeyboard(event) {
   }
 }
 
-els.startButton.addEventListener("click", startGame);
-els.restartButton.addEventListener("click", showSetup);
+els.topicSelect.addEventListener("change", chooseDeck);
 els.showAnotherButton.addEventListener("click", showAnotherCard);
 els.matchButton.addEventListener("click", matchCurrentPair);
-els.newGameButton.addEventListener("click", showSetup);
 document.addEventListener("keydown", handleKeyboard);
 
 renderTopicOptions();
+chooseDeck();

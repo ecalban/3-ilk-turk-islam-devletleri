@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#7a2e35">
     <meta name="description" content="İlk Türk-İslam devletleri bilgilerini kartlarla eşleştiren etkileşimli çalışma oyunu.">
     <title>İlk Türk-İslam Devletleri · Eşini Bul</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20260616-grid">
   </head>
   <body>
     <main class="app-shell">
@@ -14,7 +14,7 @@
         <div>
           <p class="eyebrow">KPSS Tarih Kartları</p>
           <h1>Eşini Bul</h1>
-          <p class="subtitle">Tanım kartını oku, ona ait cevap kartını destede bul ve ikisini eşleştir.</p>
+          <p class="subtitle">Tanım kartını oku, 10 cevap kartı arasından eşini seç ve ikisini buluştur.</p>
         </div>
         <div class="deck-mark" aria-hidden="true">
           <span></span>
@@ -64,18 +64,21 @@
 
           <div class="match-symbol" aria-hidden="true">+</div>
 
-          <article id="answerCard" class="study-card answer-card" aria-live="polite">
-            <div class="answer-card-top">
-              <p class="card-label">CEVAP KARTI</p>
-              <span id="answerCardCounter">1 / 10</span>
+          <section class="answers-section" aria-labelledby="answersTitle">
+            <div class="answers-heading">
+              <div>
+                <p class="card-label">CEVAP KARTLARI</p>
+                <h2 id="answersTitle">Eşleşen kartı seç</h2>
+              </div>
+              <span>10 karttan biri</span>
             </div>
-            <h2 id="answerText"></h2>
-          </article>
+            <div id="answerGrid" class="answer-grid"></div>
+          </section>
         </div>
 
         <div class="game-actions">
           <button id="showAnotherButton" class="secondary-button" type="button">Başka kart göster</button>
-          <button id="matchButton" class="primary-button" type="button">Bu ikisini eşleştir</button>
+          <button id="matchButton" class="primary-button" type="button" disabled>Bu ikisini eşleştir</button>
         </div>
 
         <div id="feedbackPanel" class="feedback-panel" aria-live="polite" hidden>
@@ -83,7 +86,6 @@
             <strong id="feedbackTitle"></strong>
             <p id="feedbackText"></p>
           </div>
-          <button id="nextButton" class="primary-button" type="button" hidden>Sonraki tanım</button>
         </div>
       </section>
 
@@ -94,9 +96,9 @@
         <button id="newGameButton" class="primary-button" type="button">Yeni oyun</button>
       </section>
 
-      <footer>Her tanımın destesinde 10 cevap kartı bulunur ve yalnızca biri eşleşir.</footer>
+      <footer>Her tanımda 10 cevap kartı görünür; doğru bilinen tanım aynı oyunda tekrar gelmez.</footer>
     </main>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=20260616-grid"></script>
   </body>
 </html>

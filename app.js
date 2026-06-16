@@ -146,10 +146,12 @@ const STUDY_ITEMS = RAW_NOTES.trim().split("\n").map((line, index) => {
 
 const state = {
   session: [],
-  index: 0,
+  currentItem: null,
   answerDeck: [],
-  answerIndex: 0,
+  selectedAnswer: null,
   matched: false,
+  deckCompleted: false,
+  completedCardIds: new Set(),
   selectedTopic: TOPICS[0],
 };
 
@@ -164,15 +166,12 @@ const els = {
   topicBadge: document.querySelector("#topicBadge"),
   roundCounter: document.querySelector("#roundCounter"),
   definitionText: document.querySelector("#definitionText"),
-  answerCard: document.querySelector("#answerCard"),
-  answerCardCounter: document.querySelector("#answerCardCounter"),
-  answerText: document.querySelector("#answerText"),
+  answerGrid: document.querySelector("#answerGrid"),
   showAnotherButton: document.querySelector("#showAnotherButton"),
   matchButton: document.querySelector("#matchButton"),
   feedbackPanel: document.querySelector("#feedbackPanel"),
   feedbackTitle: document.querySelector("#feedbackTitle"),
   feedbackText: document.querySelector("#feedbackText"),
-  nextButton: document.querySelector("#nextButton"),
   newGameButton: document.querySelector("#newGameButton"),
 };
 
@@ -208,12 +207,16 @@ function startGame() {
     : Number(els.cardCountSelect.value);
   state.session = pool.slice(0, Math.min(requestedCount, pool.length));
 
-  state.index = 0;
+  state.currentItem = null;
+  state.selectedAnswer = null;
+  state.matched = false;
+  state.deckCompleted = false;
+  state.completedCardIds = new Set();
 
   els.setupPanel.hidden = true;
   els.finishPanel.hidden = true;
   els.gamePanel.hidden = false;
-  renderRound();
+  showNextDefinition();
 }
 
 function buildAnswerDeck(item) {
@@ -242,91 +245,134 @@ function buildAnswerDeck(item) {
   return shuffle([item.answer, ...distractors.slice(0, 9)]);
 }
 
-function renderRound() {
-  const item = state.session[state.index];
-  state.answerDeck = buildAnswerDeck(item);
-  state.answerIndex = 0;
-  state.matched = false;
+function getRemainingCards() {
+  return state.session.filter((item) => !state.completedCardIds.has(item.id));
+}
+
+function updateDeckInfo() {
+  const totalCount = state.session.length;
+  const remainingCount = getRemainingCards().length;
+  const completedCount = totalCount - remainingCount;
 
   els.topicBadge.textContent = state.selectedTopic.name;
-  els.roundCounter.textContent = `Tanım ${state.index + 1} / ${state.session.length}`;
-  els.definitionText.textContent = item.prompt;
-  els.feedbackPanel.hidden = true;
-  els.feedbackPanel.classList.remove("is-match");
-  els.nextButton.hidden = true;
-  els.nextButton.textContent = state.index === state.session.length - 1
-    ? "Desteyi tamamla"
-    : "Sonraki tanım";
-  els.showAnotherButton.disabled = false;
-  els.matchButton.disabled = false;
-  els.answerCard.classList.remove("is-match", "is-miss", "is-changing");
-  renderAnswerCard();
+  els.roundCounter.textContent = `${remainingCount} kart kaldı · ${completedCount} eşleşti`;
+
+  return { completedCount, remainingCount, totalCount };
 }
 
-function renderAnswerCard() {
-  els.answerText.textContent = state.answerDeck[state.answerIndex];
-  els.answerCardCounter.textContent = `${state.answerIndex + 1} / ${state.answerDeck.length}`;
-}
-
-function showAnotherCard() {
-  if (state.matched) {
-    return;
-  }
-
-  state.answerIndex = (state.answerIndex + 1) % state.answerDeck.length;
-  els.feedbackPanel.hidden = true;
-  els.answerCard.classList.remove("is-miss");
-  els.answerCard.classList.add("is-changing");
-  window.setTimeout(() => {
-    renderAnswerCard();
-    els.answerCard.classList.remove("is-changing");
-  }, 130);
-}
-
-function matchCurrentPair() {
-  if (state.matched) {
-    return;
-  }
-
-  const item = state.session[state.index];
-  const displayedAnswer = state.answerDeck[state.answerIndex];
-  const isMatch = normalizeAnswer(displayedAnswer) === normalizeAnswer(item.answer);
-
-  if (isMatch) {
-    state.matched = true;
-    els.answerCard.classList.remove("is-miss");
-    els.answerCard.classList.add("is-match");
-    els.feedbackPanel.classList.add("is-match");
-    els.feedbackTitle.textContent = "Eşini buldun";
-    els.feedbackText.textContent = "Tanım ve cevap kartı artık bir çift.";
-    els.showAnotherButton.disabled = true;
-    els.matchButton.disabled = true;
-    els.nextButton.hidden = false;
-    els.nextButton.focus({ preventScroll: true });
-  } else {
-    els.answerCard.classList.remove("is-miss");
-    void els.answerCard.offsetWidth;
-    els.answerCard.classList.add("is-miss");
-    els.feedbackPanel.classList.remove("is-match");
-    els.feedbackTitle.textContent = "Bu kartlar eşleşmiyor";
-    els.feedbackText.textContent = "Başka bir cevap kartı gösterip yeniden dene.";
-  }
-
-  els.feedbackPanel.hidden = false;
-}
-
-function goNext() {
-  if (!state.matched) {
-    return;
-  }
-
-  if (state.index >= state.session.length - 1) {
+function showNextDefinition() {
+  const remainingCards = getRemainingCards();
+  if (remainingCards.length === 0) {
+    state.deckCompleted = true;
     showFinish();
     return;
   }
 
-  state.index += 1;
+  const freshCards = remainingCards.filter((item) => item.id !== state.currentItem?.id);
+  state.currentItem = shuffle(freshCards.length > 0 ? freshCards : remainingCards)[0];
+  state.answerDeck = buildAnswerDeck(state.currentItem);
+  state.selectedAnswer = null;
+  state.matched = false;
+  state.deckCompleted = false;
   renderRound();
+}
+
+function renderRound() {
+  updateDeckInfo();
+  els.definitionText.textContent = state.currentItem.prompt;
+  els.feedbackPanel.hidden = true;
+  els.feedbackPanel.classList.remove("is-match");
+  els.showAnotherButton.textContent = "Başka kart göster";
+  els.showAnotherButton.disabled = false;
+  els.matchButton.disabled = true;
+  renderAnswerCards();
+}
+
+function renderAnswerCards() {
+  els.answerGrid.innerHTML = "";
+  state.answerDeck.forEach((answer) => {
+    const button = document.createElement("button");
+    button.className = "answer-option";
+    button.type = "button";
+    button.dataset.answer = answer;
+    button.textContent = answer;
+    button.setAttribute("aria-pressed", "false");
+    button.addEventListener("click", () => selectAnswerCard(button));
+    els.answerGrid.append(button);
+  });
+}
+
+function showAnotherCard() {
+  if (state.deckCompleted) {
+    showFinish();
+    return;
+  }
+
+  showNextDefinition();
+}
+
+function selectAnswerCard(selectedButton) {
+  if (state.matched || state.deckCompleted) {
+    return;
+  }
+
+  els.answerGrid.querySelectorAll(".answer-option").forEach((button) => {
+    button.classList.remove("is-selected", "is-miss");
+    button.setAttribute("aria-pressed", "false");
+  });
+
+  state.selectedAnswer = selectedButton.dataset.answer;
+  selectedButton.classList.add("is-selected");
+  selectedButton.setAttribute("aria-pressed", "true");
+  els.feedbackPanel.hidden = true;
+  els.feedbackPanel.classList.remove("is-match");
+  els.matchButton.disabled = false;
+}
+
+function matchCurrentPair() {
+  if (state.matched || state.deckCompleted || !state.selectedAnswer) {
+    return;
+  }
+
+  const item = state.currentItem;
+  const isMatch = normalizeAnswer(state.selectedAnswer) === normalizeAnswer(item.answer);
+
+  if (isMatch) {
+    state.matched = true;
+    state.completedCardIds.add(item.id);
+    const deckStats = updateDeckInfo();
+
+    els.answerGrid.querySelectorAll(".answer-option").forEach((button) => {
+      button.disabled = true;
+      button.classList.remove("is-miss");
+      if (normalizeAnswer(button.dataset.answer) === normalizeAnswer(item.answer)) {
+        button.classList.remove("is-selected");
+        button.classList.add("is-match");
+      }
+    });
+
+    els.feedbackPanel.classList.add("is-match");
+    els.feedbackTitle.textContent = "Eşini buldun";
+    els.feedbackText.textContent = `${item.answer} bu tanımın eşidir. Bu tanım tekrar gösterilmeyecek.`;
+    els.matchButton.disabled = true;
+    if (deckStats.remainingCount === 0) {
+      state.deckCompleted = true;
+      els.showAnotherButton.textContent = "Desteyi tamamla";
+    }
+    els.showAnotherButton.focus({ preventScroll: true });
+  } else {
+    const selectedButton = els.answerGrid.querySelector(".answer-option.is-selected");
+    selectedButton?.classList.remove("is-selected");
+    selectedButton?.classList.add("is-miss");
+    selectedButton?.setAttribute("aria-pressed", "false");
+    state.selectedAnswer = null;
+    els.matchButton.disabled = true;
+    els.feedbackPanel.classList.remove("is-match");
+    els.feedbackTitle.textContent = "Bu kartlar eşleşmiyor";
+    els.feedbackText.textContent = "10 cevap kartı arasından başka bir kart seçip yeniden dene.";
+  }
+
+  els.feedbackPanel.hidden = false;
 }
 
 function showFinish() {
@@ -347,7 +393,7 @@ function handleKeyboard(event) {
     return;
   }
 
-  if (!state.matched && event.key === "ArrowRight") {
+  if (event.key === "ArrowRight") {
     event.preventDefault();
     showAnotherCard();
     return;
@@ -356,7 +402,7 @@ function handleKeyboard(event) {
   if (event.key === "Enter") {
     event.preventDefault();
     if (state.matched) {
-      goNext();
+      showAnotherCard();
     } else {
       matchCurrentPair();
     }
@@ -367,7 +413,6 @@ els.startButton.addEventListener("click", startGame);
 els.restartButton.addEventListener("click", showSetup);
 els.showAnotherButton.addEventListener("click", showAnotherCard);
 els.matchButton.addEventListener("click", matchCurrentPair);
-els.nextButton.addEventListener("click", goNext);
 els.newGameButton.addEventListener("click", showSetup);
 document.addEventListener("keydown", handleKeyboard);
 
